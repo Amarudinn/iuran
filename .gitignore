@@ -2,11 +2,12 @@
 .agent/
 GEMINI.md
 
-# Environment & Generated Config (Never commit secrets/keys)
+# Environment, Build Output & Generated Config (Never commit secrets/keys)
 .env
 .env.*
 !.env.example
 js/config/env.generated.js
+public/
 
 # OS & Editor Artifacts
 .DS_Store
