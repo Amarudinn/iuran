@@ -1,12 +1,15 @@
 'use strict';
 
 /**
- * Centralized reactive application state with async Supabase sync & Realtime updates.
+ * Centralized reactive application state with async Supabase sync, Realtime updates,
+ * and persistent verified Admin PIN in localStorage.
  */
 (function initStore(global) {
   const app = (global.IuranApp = global.IuranApp || {});
   const repo = app.repository;
   const sel = app.selectors;
+
+  const PIN_STORAGE_KEY = 'zero_five_admin_pin';
 
   const state = {
     residents: [],
@@ -22,7 +25,6 @@
     adminTab: 'history', // 'history' | 'unpaid' | 'lunas'
   };
 
-  // Kept privately in closure during unlocked admin session only
   let sessionPin = '';
   let realtimeTimer = null;
 
@@ -40,6 +42,45 @@
 
   function getState() {
     return state;
+  }
+
+  function readSavedPin() {
+    try {
+      return String(global.localStorage.getItem(PIN_STORAGE_KEY) || '').trim();
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function savePinToStorage(pin) {
+    try {
+      global.localStorage.setItem(PIN_STORAGE_KEY, pin);
+    } catch (_err) {
+      // Ignore storage write errors
+    }
+  }
+
+  function clearSavedPin() {
+    try {
+      global.localStorage.removeItem(PIN_STORAGE_KEY);
+    } catch (_err) {
+      // Ignore storage delete errors
+    }
+  }
+
+  async function restoreSavedAdminSession() {
+    const savedPin = readSavedPin();
+    if (!savedPin) return;
+
+    const res = await repo.verifyAdminPin(savedPin);
+    if (!res.error && res.data === true) {
+      sessionPin = savedPin;
+      state.isAdminAuthenticated = true;
+      notify();
+    } else if (!res.error && res.data === false) {
+      // PIN was changed on server; remove stale cached PIN
+      clearSavedPin();
+    }
   }
 
   async function refreshFromRemote() {
@@ -61,7 +102,7 @@
     state.isLoading = true;
     notify();
 
-    const res = await refreshFromRemote();
+    const [res] = await Promise.all([refreshFromRemote(), restoreSavedAdminSession()]);
     state.isLoading = false;
     notify();
 
@@ -100,10 +141,12 @@
   }
 
   async function authenticateAdmin(pin) {
-    const res = await repo.verifyAdminPin(pin);
+    const cleanPin = String(pin || '').trim();
+    const res = await repo.verifyAdminPin(cleanPin);
     if (res.error) return { ok: false, error: res.error };
     if (res.data) {
-      sessionPin = String(pin || '').trim();
+      sessionPin = cleanPin;
+      savePinToStorage(cleanPin);
       state.isAdminAuthenticated = true;
       state.activeView = 'admin';
       notify();
@@ -121,6 +164,7 @@
 
   function lockAdminSession() {
     sessionPin = '';
+    clearSavedPin();
     state.isAdminAuthenticated = false;
     state.activeView = 'public';
     notify();

@@ -73,12 +73,20 @@ const envScriptContent = [
 fs.mkdirSync(path.dirname(localEnvOut), { recursive: true });
 fs.writeFileSync(localEnvOut, envScriptContent, 'utf8');
 
-// 2. Build clean public/ output directory (only frontend runtime assets)
+// 2. Build clean public/ output directory (only frontend runtime + PWA assets)
 fs.rmSync(publicDir, { recursive: true, force: true });
 fs.mkdirSync(publicDir, { recursive: true });
 fs.copyFileSync(path.join(rootDir, 'index.html'), path.join(publicDir, 'index.html'));
+fs.copyFileSync(
+  path.join(rootDir, 'manifest.webmanifest'),
+  path.join(publicDir, 'manifest.webmanifest')
+);
+fs.copyFileSync(path.join(rootDir, 'sw.js'), path.join(publicDir, 'sw.js'));
 fs.cpSync(path.join(rootDir, 'css'), path.join(publicDir, 'css'), { recursive: true });
 fs.cpSync(path.join(rootDir, 'js'), path.join(publicDir, 'js'), { recursive: true });
+if (fs.existsSync(path.join(rootDir, 'assets'))) {
+  fs.cpSync(path.join(rootDir, 'assets'), path.join(publicDir, 'assets'), { recursive: true });
+}
 
 console.log(
   `Built public/ & js/config/env.generated.js (Supabase: ${supabaseUrl ? 'CONFIGURED' : 'EMPTY'})`

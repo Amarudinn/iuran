@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Application bootstrapper, theme init, async Supabase hydration, and view switcher.
+ * Application bootstrapper, theme init, PWA init, async Supabase hydration, and view switcher.
  */
 (function initMain(global) {
   const app = (global.IuranApp = global.IuranApp || {});
@@ -12,10 +12,15 @@
 
     const publicSection = document.getElementById('public-view');
     const adminSection = document.getElementById('admin-view');
+    const adminBtnIcon = document.querySelector('#open-admin-btn i');
 
     const isAdmin = state.activeView === 'admin' && state.isAdminAuthenticated;
     publicSection?.classList.toggle('is-hidden', isAdmin);
     adminSection?.classList.toggle('is-hidden', !isAdmin);
+
+    if (adminBtnIcon) {
+      adminBtnIcon.className = state.isAdminAuthenticated ? 'ph ph-lock-open' : 'ph ph-lock-key';
+    }
 
     publicView.render();
     if (isAdmin) {
@@ -46,9 +51,10 @@
   }
 
   async function bootstrap() {
-    const { store, theme, publicView, adminView, modals, sheets, toast } = app;
+    const { store, theme, pwaInstall, publicView, adminView, modals, sheets, toast } = app;
 
     theme.init();
+    pwaInstall.init();
     publicView.bindEvents();
     adminView.bindEvents();
     modals.bindModalEvents();
