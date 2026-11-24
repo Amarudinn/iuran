@@ -1,0 +1,41 @@
+name: Supabase Daily Keepalive
+
+on:
+  schedule:
+    # Jalan 1x setiap hari pukul 02:17 UTC (09:17 WIB) — menghindari antrean menit :00
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping Supabase PostgreSQL (Read-Only Query)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "ERROR: Secret SUPABASE_URL atau SUPABASE_PUBLISHABLE_KEY belum diatur di GitHub Repository Secrets."
+            exit 1
+          fi
+
+          # Kirim header apikey saja (tanpa Authorization Bearer karena sb_publishable_ bukan JWT)
+          HTTP_STATUS=$(curl -sS --max-time 20 -o /tmp/sb_response.txt -w "%{http_code}" \
+            "${SUPABASE_URL%/}/rest/v1/residents?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+            -H "Accept: application/json")
+
+          echo "HTTP Status: ${HTTP_STATUS}"
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Response:"
+            cat /tmp/sb_response.txt
+            exit 1
+          fi
+
+          echo "Supabase keepalive berhasil pada $(date -u '+%Y-%m-%d %H:%M:%S UTC')."
