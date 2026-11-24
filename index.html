@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>ZERO.FIVE — Pencatatan Iuran Warga</title>
+  <meta name="description" content="ZERO.FIVE — Pencatatan pemasukan iuran warga yang bersih, transparan, dan khusus mobile." />
+
+  <!-- Typography: Space Grotesk (Wordmark) + Plus Jakarta Sans (UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+
+  <!-- Phosphor Icons CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+
+  <!-- Modular Mobile-Only Stylesheets -->
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/public.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- =========================================================
+         VIEW A: TAMPILAN PUBLIK WARGA (DEFAULT)
+         ========================================================= -->
+    <div id="public-view">
+      <header class="app-header">
+        <div class="container header-inner">
+          <div class="header-top">
+            <h1 class="wordmark" aria-label="ZERO.FIVE">
+              <span class="wm-zero">ZERO</span><span class="wm-dot" aria-hidden="true"></span><span class="wm-five">FIVE</span>
+            </h1>
+
+            <div class="header-actions">
+              <button
+                type="button"
+                id="open-admin-btn"
+                class="btn btn-secondary btn-sm"
+                aria-label="Buka Dashboard Pengurus"
+              >
+                <i class="ph ph-lock-key" aria-hidden="true"></i>
+                <span>Pengurus</span>
+              </button>
+              <button
+                type="button"
+                id="theme-toggle-btn"
+                class="btn btn-secondary btn-icon"
+                data-theme-toggle
+                aria-pressed="false"
+                aria-label="Ganti ke mode gelap"
+                title="Ganti ke mode gelap"
+              >
+                <i class="ph ph-moon" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="date-filter-row">
+            <!-- Custom Polished Day Dropdown -->
+            <div id="public-day-dropdown" class="cselect">
+              <button
+                type="button"
+                class="cselect-trigger"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-label="Pilih hari penarikan"
+              >
+                <span class="cselect-leading">
+                  <i class="ph ph-calendar-blank" aria-hidden="true"></i>
+                  <span id="public-day-value" class="cselect-value is-placeholder">Pilih Hari...</span>
+                </span>
+                <i class="ph ph-caret-down cselect-caret" aria-hidden="true"></i>
+              </button>
+              <div class="cselect-menu is-hidden" role="listbox" aria-label="Daftar hari penarikan">
+                <div id="public-day-list" class="cselect-list"></div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              id="public-all-days-btn"
+              class="all-days-btn is-active"
+              aria-pressed="true"
+            >
+              Semuanya
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="container main-content">
+        <!-- Summary Cards -->
+        <section class="metrics-stack" aria-label="Ringkasan Pemasukan">
+          <article class="card metric-card metric-card-hero">
+            <div class="metric-header">
+              <span>Total Pemasukan</span>
+              <span class="metric-icon" aria-hidden="true"><i class="ph ph-wallet"></i></span>
+            </div>
+            <div id="metric-total-income" class="metric-value tabular-nums">Rp 0</div>
+            <p id="metric-tx-count" class="metric-foot">Total keseluruhan</p>
+          </article>
+
+          <article class="card metric-card metric-card-compact">
+            <div>
+              <div class="metric-header">
+                <span>Sudah Menyetor</span>
+              </div>
+              <div id="metric-paid-count" class="metric-value tabular-nums">0 / 0</div>
+              <p id="metric-unpaid-note" class="metric-foot">-</p>
+            </div>
+            <div class="metric-sub-badges">
+              <span id="metric-lunas-badge" class="badge badge-lunas">
+                <i class="ph-fill ph-seal-check" aria-hidden="true"></i>0 Lunas
+              </span>
+            </div>
+          </article>
+        </section>
+
+        <!-- Resident List Card -->
+        <section class="card table-card" aria-label="Daftar Setoran Warga">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <i class="ph ph-magnifying-glass search-icon" aria-hidden="true"></i>
+              <input
+                type="search"
+                id="public-search-input"
+                class="input"
+                placeholder="Cari nama Anda di sini..."
+                autocomplete="off"
+                aria-label="Cari nama warga"
+              />
+              <button
+                type="button"
+                id="public-search-clear"
+                class="search-clear is-hidden"
+                aria-label="Hapus pencarian"
+              >
+                <i class="ph ph-x" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div class="filter-pills" role="group" aria-label="Filter status setoran">
+              <button type="button" class="filter-pill is-active" data-status-filter="all" aria-pressed="true">
+                Semua <span id="count-all" class="pill-count tabular-nums">0</span>
+              </button>
+              <button type="button" class="filter-pill" data-status-filter="paid" aria-pressed="false">
+                Sudah Bayar <span id="count-paid" class="pill-count tabular-nums">0</span>
+              </button>
+              <button type="button" class="filter-pill" data-status-filter="lunas" aria-pressed="false">
+                Lunas <span id="count-lunas" class="pill-count tabular-nums">0</span>
+              </button>
+              <button type="button" class="filter-pill" data-status-filter="unpaid" aria-pressed="false">
+                Belum <span id="count-unpaid" class="pill-count tabular-nums">0</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Nama Warga</th>
+                  <th scope="col" class="col-right">Setoran</th>
+                  <th scope="col" class="col-right">Status</th>
+                </tr>
+              </thead>
+              <tbody id="public-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <span class="wordmark wordmark-footer" aria-label="ZERO.FIVE">
+          <span class="wm-zero">ZERO</span><span class="wm-dot" aria-hidden="true"></span><span class="wm-five">FIVE</span>
+        </span>
+      </footer>
+    </div>
+
+    <!-- =========================================================
+         VIEW B: DASHBOARD KHUSUS PENARIK IURAN (MOBILE-ONLY)
+         ========================================================= -->
+    <div id="admin-view" class="is-hidden">
+      <header class="admin-banner">
+        <div class="container admin-banner-inner">
+          <span class="wordmark" aria-label="ZERO.FIVE">
+            <span class="wm-zero">ZERO</span><span class="wm-dot" aria-hidden="true"></span><span class="wm-five">FIVE</span>
+          </span>
+
+          <div class="admin-actions">
+            <button type="button" id="back-to-public-btn" class="btn btn-secondary btn-sm">
+              <i class="ph ph-arrow-left" aria-hidden="true"></i>
+              <span>Warga</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-icon"
+              data-theme-toggle
+              aria-pressed="false"
+              aria-label="Ganti ke mode gelap"
+              title="Ganti ke mode gelap"
+            >
+              <i class="ph ph-moon" aria-hidden="true"></i>
+            </button>
+            <button type="button" id="lock-admin-btn" class="btn btn-ghost btn-icon" title="Kunci sesi" aria-label="Kunci sesi pengurus">
+              <i class="ph ph-sign-out" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="container main-content">
+        <!-- Label Mode Pengurus di bawah Header -->
+        <div class="admin-mode-strip">
+          <span class="badge badge-admin">
+            <i class="ph-fill ph-shield-check" aria-hidden="true"></i>Mode Pengurus
+          </span>
+          <span class="brand-subtitle">Menampilkan seluruh data</span>
+        </div>
+
+        <!-- Admin Context Card (Dropdown Hari Disable -> Semuanya) -->
+        <div class="card admin-context-card">
+          <div class="date-filter-row">
+            <div class="cselect">
+              <button
+                type="button"
+                id="admin-day-trigger"
+                class="cselect-trigger"
+                disabled
+                aria-disabled="true"
+                aria-label="Pilih hari dinonaktifkan di mode pengurus"
+              >
+                <span class="cselect-leading">
+                  <i class="ph ph-calendar-blank" aria-hidden="true"></i>
+                  <span class="cselect-value is-placeholder">Pilih Hari...</span>
+                </span>
+                <i class="ph ph-lock-simple cselect-caret" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              id="admin-all-days-btn"
+              class="all-days-btn is-active"
+              aria-pressed="true"
+            >
+              Semuanya
+            </button>
+          </div>
+
+          <div class="admin-stats-strip">
+            <div class="admin-stat-item">
+              <span class="brand-subtitle">Total Masuk</span>
+              <strong id="admin-metric-income" class="admin-stat-value admin-stat-accent tabular-nums">Rp 0</strong>
+            </div>
+            <div class="admin-stat-item">
+              <span class="brand-subtitle">Sudah Setor</span>
+              <strong id="admin-metric-paid" class="admin-stat-value tabular-nums">0 / 0</strong>
+            </div>
+            <div class="admin-stat-item">
+              <span class="brand-subtitle">Label Lunas</span>
+              <strong id="admin-metric-lunas" class="admin-stat-value admin-stat-lunas tabular-nums">0 Warga</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-grid">
+          <!-- Form Pencatatan Setoran -->
+          <section id="payment-form-card" class="card" aria-label="Catat Setoran Baru">
+            <div class="section-head">
+              <h2 class="section-title">
+                <i class="ph ph-plus-circle" style="color: var(--accent-primary);" aria-hidden="true"></i>
+                Catat Setoran Warga
+              </h2>
+            </div>
+
+            <form id="payment-form" class="form-body" novalidate>
+              <div class="form-group">
+                <div class="form-label-row">
+                  <span class="form-label">Nama Warga</span>
+                  <button type="button" id="toggle-new-resident-btn" class="link-btn">
+                    <i class="ph ph-user-plus" aria-hidden="true"></i>+ Warga Baru
+                  </button>
+                </div>
+
+                <div id="new-resident-box" class="new-resident-box is-hidden">
+                  <span class="brand-subtitle">Tambahkan nama warga baru ke daftar:</span>
+                  <div class="new-resident-row">
+                    <input
+                      type="text"
+                      id="new-resident-name"
+                      class="input"
+                      placeholder="Contoh: Hendri Wijaya"
+                      maxlength="60"
+                    />
+                    <button type="button" id="save-new-resident-btn" class="btn btn-primary btn-sm">
+                      Simpan
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Custom Searchable Resident Selector -->
+                <input type="hidden" id="payment-resident-select" value="" />
+                <div id="admin-resident-dropdown" class="cselect">
+                  <button
+                    type="button"
+                    class="cselect-trigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-label="Pilih nama warga"
+                  >
+                    <span class="cselect-leading">
+                      <i class="ph ph-user" aria-hidden="true"></i>
+                      <span id="admin-resident-value" class="cselect-value is-placeholder">Pilih Nama Warga...</span>
+                    </span>
+                    <i class="ph ph-caret-down cselect-caret" aria-hidden="true"></i>
+                  </button>
+                  <div class="cselect-menu is-hidden" role="listbox" aria-label="Daftar warga">
+                    <div class="cselect-search-wrap">
+                      <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+                      <input
+                        type="search"
+                        id="admin-resident-search"
+                        class="cselect-search"
+                        placeholder="Cari nama warga..."
+                        autocomplete="off"
+                      />
+                    </div>
+                    <div id="admin-resident-list" class="cselect-list"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="payment-amount-input" class="form-label">Nominal Bayar (Rp)</label>
+                <div class="currency-input-wrap">
+                  <span class="currency-prefix">Rp</span>
+                  <input
+                    type="text"
+                    id="payment-amount-input"
+                    class="input currency-input tabular-nums"
+                    inputmode="numeric"
+                    placeholder="0"
+                    autocomplete="off"
+                    required
+                  />
+                </div>
+                <div class="quick-amounts" aria-label="Pilihan cepat nominal">
+                  <button type="button" class="chip-amount" data-amount="10000">10rb</button>
+                  <button type="button" class="chip-amount" data-amount="20000">20rb</button>
+                  <button type="button" class="chip-amount" data-amount="25000">25rb</button>
+                  <button type="button" class="chip-amount" data-amount="50000">50rb</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="payment-date-display" class="form-label">Hari / Tanggal Penarikan</label>
+                <input type="hidden" id="payment-date-input" value="" />
+                <div class="icon-input-wrap">
+                  <i class="ph ph-calendar-blank" aria-hidden="true"></i>
+                  <input
+                    type="text"
+                    id="payment-date-display"
+                    class="input icon-input"
+                    disabled
+                    aria-label="Hari penarikan otomatis hari ini"
+                  />
+                </div>
+              </div>
+
+              <label class="checkbox-row">
+                <input type="checkbox" id="payment-mark-lunas" />
+                <span>Tandai warga ini sebagai <strong>Lunas</strong></span>
+              </label>
+
+              <p id="payment-form-error" class="form-error is-hidden" role="alert"></p>
+
+              <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <i class="ph ph-check-circle" aria-hidden="true"></i>
+                <span>Simpan Setoran</span>
+              </button>
+            </form>
+          </section>
+
+          <!-- Kontrol Pengurus: Riwayat, Belum Bayar, & Kelola Label Lunas -->
+          <section class="card table-card" aria-label="Kontrol Setoran Pengurus">
+            <div class="admin-tabs" role="tablist">
+              <button type="button" class="admin-tab is-active" data-admin-tab="history" role="tab">
+                Riwayat <span id="tab-history-count" class="badge badge-admin tabular-nums">0</span>
+              </button>
+              <button type="button" class="admin-tab" data-admin-tab="unpaid" role="tab">
+                Belum <span id="tab-unpaid-count" class="badge badge-unpaid tabular-nums">0</span>
+              </button>
+              <button type="button" class="admin-tab" data-admin-tab="lunas" role="tab">
+                Lunas <span id="tab-lunas-count" class="badge badge-lunas tabular-nums">0</span>
+              </button>
+            </div>
+
+            <div id="admin-history-panel" class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Warga &amp; Hari</th>
+                    <th scope="col" class="col-right">Nominal</th>
+                    <th scope="col" class="col-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-history-body"></tbody>
+              </table>
+            </div>
+
+            <div id="admin-unpaid-panel" class="table-wrap is-hidden">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Nama Warga</th>
+                    <th scope="col" class="col-right">Tindakan</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-unpaid-body"></tbody>
+              </table>
+            </div>
+
+            <div id="admin-lunas-panel" class="table-wrap is-hidden">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Nama Warga</th>
+                    <th scope="col" class="col-right">Status Khusus</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-lunas-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       BOTTOM SHEET 1: GERBANG PIN PENGURUS (SIMULASI)
+       ========================================================= -->
+  <div id="pin-modal" class="modal-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="pin-modal-title">
+    <div class="modal-panel">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 id="pin-modal-title" class="section-title">
+          <i class="ph ph-lock-key" style="color: var(--accent-primary);" aria-hidden="true"></i>
+          Akses Pengurus
+        </h2>
+        <button type="button" id="pin-close-btn" class="btn btn-ghost btn-icon" aria-label="Tutup">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <form id="pin-form">
+        <div class="modal-body">
+          <div class="pin-hint">
+            <i class="ph-fill ph-info" aria-hidden="true"></i>
+            <span>PIN simulasi penarik iuran: <strong>1234</strong></span>
+          </div>
+
+          <div class="form-group">
+            <label for="pin-input" class="form-label">Masukkan PIN Pengurus</label>
+            <input
+              type="password"
+              id="pin-input"
+              class="input pin-input"
+              inputmode="numeric"
+              maxlength="6"
+              placeholder="••••"
+              autocomplete="off"
+              required
+            />
+          </div>
+
+          <p id="pin-error" class="form-error is-hidden" role="alert">
+            <i class="ph-fill ph-warning-circle" aria-hidden="true"></i>
+            PIN tidak sesuai. Gunakan PIN simulasi: 1234.
+          </p>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="pin-cancel-btn" class="btn btn-secondary">Batal</button>
+          <button type="submit" class="btn btn-primary">Masuk</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       BOTTOM SHEET 2: KOREKSI NOMINAL SETORAN
+       ========================================================= -->
+  <div id="edit-modal" class="modal-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <div class="modal-panel">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 id="edit-modal-title" class="section-title">
+          <i class="ph ph-pencil-simple" style="color: var(--accent-primary);" aria-hidden="true"></i>
+          Koreksi Nominal
+        </h2>
+        <button type="button" id="edit-close-btn" class="btn btn-ghost btn-icon" aria-label="Tutup">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <form id="edit-form">
+        <div class="modal-body">
+          <p class="brand-subtitle">
+            Warga: <strong id="edit-resident-name" style="color: var(--text-primary);"></strong>
+          </p>
+
+          <div class="form-group">
+            <label for="edit-amount-input" class="form-label">Nominal Baru (Rp)</label>
+            <div class="currency-input-wrap">
+              <span class="currency-prefix">Rp</span>
+              <input
+                type="text"
+                id="edit-amount-input"
+                class="input currency-input tabular-nums"
+                inputmode="numeric"
+                autocomplete="off"
+                required
+              />
+            </div>
+          </div>
+
+          <p id="edit-error" class="form-error is-hidden" role="alert"></p>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="edit-cancel-btn" class="btn btn-secondary">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Ordered Vanilla JS Modules (Works on both file:// and HTTP server) -->
+  <script defer src="js/utils/formatters.js"></script>
+  <script defer src="js/data/mockData.js"></script>
+  <script defer src="js/services/iuranRepository.js"></script>
+  <script defer src="js/state/selectors.js"></script>
+  <script defer src="js/state/store.js"></script>
+  <script defer src="js/ui/theme.js"></script>
+  <script defer src="js/ui/customDropdown.js"></script>
+  <script defer src="js/ui/toast.js"></script>
+  <script defer src="js/ui/modals.js"></script>
+  <script defer src="js/ui/publicView.js"></script>
+  <script defer src="js/ui/adminForm.js"></script>
+  <script defer src="js/ui/adminView.js"></script>
+  <script defer src="js/main.js"></script>
+</body>
+</html>
