@@ -1,26 +1,30 @@
 'use strict';
 
 /**
- * Centralized reactive application state and mutations.
- * Default collection filter is "all" (Semuanya).
+ * Centralized reactive application state with async Supabase sync & Realtime updates.
  */
 (function initStore(global) {
   const app = (global.IuranApp = global.IuranApp || {});
   const repo = app.repository;
   const sel = app.selectors;
 
-  const initial = repo.fetchInitialData().data;
-
   const state = {
-    residents: initial.residents,
-    payments: initial.payments,
+    residents: [],
+    payments: [],
     selectedDate: 'all', // 'all' (Semuanya - default) | 'YYYY-MM-DD'
     activeView: 'public', // 'public' | 'admin'
     isAdminAuthenticated: false,
+    isLoading: true,
+    loadError: null,
+    dbMode: repo.getMode(), // 'supabase' | 'demo'
     searchQuery: '',
     statusFilter: 'all', // 'all' | 'paid' | 'lunas' | 'unpaid'
     adminTab: 'history', // 'history' | 'unpaid' | 'lunas'
   };
+
+  // Kept privately in closure during unlocked admin session only
+  let sessionPin = '';
+  let realtimeTimer = null;
 
   /** @type {Set<() => void>} */
   const listeners = new Set();
@@ -36,6 +40,39 @@
 
   function getState() {
     return state;
+  }
+
+  async function refreshFromRemote() {
+    const res = await repo.fetchInitialData();
+    if (res.error) {
+      state.loadError = res.error;
+      notify();
+      return res;
+    }
+    state.residents = res.data.residents;
+    state.payments = res.data.payments;
+    state.loadError = null;
+    notify();
+    return res;
+  }
+
+  async function init() {
+    state.dbMode = repo.getMode();
+    state.isLoading = true;
+    notify();
+
+    const res = await refreshFromRemote();
+    state.isLoading = false;
+    notify();
+
+    repo.subscribeRealtime(() => {
+      if (realtimeTimer) global.clearTimeout(realtimeTimer);
+      realtimeTimer = global.setTimeout(() => {
+        refreshFromRemote();
+      }, 250);
+    });
+
+    return res;
   }
 
   function setSelectedDate(dateOrAll) {
@@ -62,14 +99,17 @@
     notify();
   }
 
-  function authenticateAdmin(pin) {
-    const ok = repo.verifyAdminPin(pin);
-    if (ok) {
+  async function authenticateAdmin(pin) {
+    const res = await repo.verifyAdminPin(pin);
+    if (res.error) return { ok: false, error: res.error };
+    if (res.data) {
+      sessionPin = String(pin || '').trim();
       state.isAdminAuthenticated = true;
       state.activeView = 'admin';
       notify();
+      return { ok: true, error: null };
     }
-    return ok;
+    return { ok: false, error: 'PIN pengurus tidak sesuai.' };
   }
 
   function openView(view) {
@@ -80,13 +120,17 @@
   }
 
   function lockAdminSession() {
+    sessionPin = '';
     state.isAdminAuthenticated = false;
     state.activeView = 'public';
     notify();
   }
 
-  function recordPayment(payload) {
-    const res = repo.insertPayment(payload);
+  async function recordPayment(payload) {
+    if (!state.isAdminAuthenticated) {
+      return { data: null, error: 'Sesi pengurus belum aktif.' };
+    }
+    const res = await repo.insertPayment(sessionPin, payload);
     if (res.data) {
       state.payments.push(res.data.payment);
       if (payload.markLunas) {
@@ -98,8 +142,11 @@
     return res;
   }
 
-  function editPayment(paymentId, newAmount) {
-    const res = repo.updatePaymentAmount(paymentId, newAmount);
+  async function editPayment(paymentId, newAmount) {
+    if (!state.isAdminAuthenticated) {
+      return { data: null, error: 'Sesi pengurus belum aktif.' };
+    }
+    const res = await repo.updatePaymentAmount(sessionPin, paymentId, newAmount);
     if (res.data) {
       const target = state.payments.find((p) => p.id === paymentId);
       if (target) target.amount = res.data.amount;
@@ -108,26 +155,26 @@
     return res;
   }
 
-  function removePayment(paymentId) {
-    const res = repo.deletePayment(paymentId);
+  async function removePayment(paymentId) {
+    if (!state.isAdminAuthenticated) {
+      return { data: null, error: 'Sesi pengurus belum aktif.' };
+    }
+    const res = await repo.deletePayment(sessionPin, paymentId);
     if (res.data) {
       state.payments = state.payments.filter((p) => p.id !== paymentId);
-      const remainingDays = sel.getCollectionDays(state);
-      if (state.selectedDate !== 'all' && !remainingDays.includes(state.selectedDate)) {
-        state.selectedDate = 'all';
-      }
       notify();
     }
     return res;
   }
 
-  function toggleResidentLunas(residentId) {
+  async function toggleResidentLunas(residentId) {
     if (!state.isAdminAuthenticated) {
       return { data: null, error: 'Hanya pengurus yang dapat mengubah status Lunas.' };
     }
     const target = state.residents.find((r) => r.id === residentId);
     if (!target) return { data: null, error: 'Data warga tidak ditemukan.' };
-    const res = repo.setResidentLunas(residentId, !target.isLunas);
+
+    const res = await repo.setResidentLunas(sessionPin, residentId, !target.isLunas);
     if (res.data) {
       target.isLunas = res.data.isLunas;
       notify();
@@ -135,8 +182,11 @@
     return res;
   }
 
-  function addResident(name) {
-    const res = repo.insertResident(name);
+  async function addResident(name) {
+    if (!state.isAdminAuthenticated) {
+      return { data: null, error: 'Sesi pengurus belum aktif.' };
+    }
+    const res = await repo.insertResident(sessionPin, name);
     if (res.data) {
       state.residents.push(res.data);
       notify();
@@ -147,6 +197,8 @@
   app.store = {
     subscribe,
     getState,
+    init,
+    refreshFromRemote,
     getCollectionDays: () => sel.getCollectionDays(state),
     getResidentSummaries: (dateOrAll = state.selectedDate) => sel.getResidentSummaries(state, dateOrAll),
     getStats: (dateOrAll = state.selectedDate) => sel.getStats(state, dateOrAll),

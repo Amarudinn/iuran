@@ -1,0 +1,15 @@
+# AI Agent & Local Rules
+.agent/
+GEMINI.md
+
+# Environment & Generated Config (Never commit secrets/keys)
+.env
+.env.*
+!.env.example
+js/config/env.generated.js
+
+# OS & Editor Artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

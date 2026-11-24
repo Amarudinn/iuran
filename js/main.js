@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Application bootstrapper, theme init, and view switcher (Public <-> Collector Admin).
+ * Application bootstrapper, theme init, async Supabase hydration, and view switcher.
  */
 (function initMain(global) {
   const app = (global.IuranApp = global.IuranApp || {});
@@ -45,21 +45,29 @@
     });
   }
 
-  function bootstrap() {
-    const { store, theme, publicView, adminView, modals } = app;
+  async function bootstrap() {
+    const { store, theme, publicView, adminView, modals, sheets, toast } = app;
 
     theme.init();
     publicView.bindEvents();
     adminView.bindEvents();
     modals.bindModalEvents();
+    sheets.bindSheetEvents();
     bindNavigation();
 
     store.subscribe(renderApp);
     renderApp();
+
+    const res = await store.init();
+    if (res && res.error) {
+      toast.showToast(res.error, 'error');
+    }
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bootstrap);
+    document.addEventListener('DOMContentLoaded', () => {
+      bootstrap();
+    });
   } else {
     bootstrap();
   }

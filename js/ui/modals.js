@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Modal controllers for Admin PIN Gate and Payment Correction.
+ * Async Modal controllers for Admin PIN Gate and Payment Amount Correction.
  */
 (function initModals(global) {
   const app = (global.IuranApp = global.IuranApp || {});
@@ -13,7 +13,11 @@
     const modal = document.getElementById('pin-modal');
     const input = document.getElementById('pin-input');
     const errorEl = document.getElementById('pin-error');
+    const hintEl = document.getElementById('pin-hint-box');
     if (!modal || !input || !errorEl) return;
+
+    const isLive = store.getState().dbMode === 'supabase';
+    hintEl?.classList.toggle('is-hidden', isLive);
 
     input.value = '';
     errorEl.classList.add('is-hidden');
@@ -22,14 +26,9 @@
   }
 
   function closePinModal() {
-    const modal = document.getElementById('pin-modal');
-    if (modal) modal.classList.add('is-hidden');
+    document.getElementById('pin-modal')?.classList.add('is-hidden');
   }
 
-  /**
-   * Open payment amount correction modal for a specific payment record.
-   * @param {{ id: string, residentName: string, amount: number }} payment
-   */
   function openEditModal(payment) {
     const modal = document.getElementById('edit-modal');
     const nameEl = document.getElementById('edit-resident-name');
@@ -47,8 +46,7 @@
 
   function closeEditModal() {
     editingPaymentId = null;
-    const modal = document.getElementById('edit-modal');
-    if (modal) modal.classList.add('is-hidden');
+    document.getElementById('edit-modal')?.classList.add('is-hidden');
   }
 
   function bindModalEvents() {
@@ -56,6 +54,7 @@
     const pinForm = document.getElementById('pin-form');
     const pinInput = document.getElementById('pin-input');
     const pinError = document.getElementById('pin-error');
+    const pinSubmit = document.getElementById('pin-submit-btn');
 
     document.getElementById('pin-close-btn')?.addEventListener('click', closePinModal);
     document.getElementById('pin-cancel-btn')?.addEventListener('click', closePinModal);
@@ -63,23 +62,33 @@
       if (e.target === pinModal) closePinModal();
     });
 
-    pinForm?.addEventListener('submit', (e) => {
+    pinForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!pinInput || !pinError) return;
-      const success = store.authenticateAdmin(pinInput.value);
-      if (!success) {
-        pinError.classList.remove('is-hidden');
-        pinInput.select();
-        return;
+      if (!pinInput || !pinError || !pinSubmit) return;
+
+      pinSubmit.disabled = true;
+      pinSubmit.textContent = 'Memeriksa...';
+      try {
+        const res = await store.authenticateAdmin(pinInput.value);
+        if (!res.ok) {
+          pinError.textContent = res.error || 'PIN pengurus tidak sesuai.';
+          pinError.classList.remove('is-hidden');
+          pinInput.select();
+          return;
+        }
+        closePinModal();
+        toast.showToast('Berhasil masuk ke Mode Pengurus.');
+      } finally {
+        pinSubmit.disabled = false;
+        pinSubmit.textContent = 'Masuk';
       }
-      closePinModal();
-      toast.showToast('Berhasil masuk ke Dashboard Pengurus.');
     });
 
     const editModal = document.getElementById('edit-modal');
     const editForm = document.getElementById('edit-form');
     const editInput = document.getElementById('edit-amount-input');
     const editError = document.getElementById('edit-error');
+    const editSubmit = document.getElementById('edit-submit-btn');
 
     document.getElementById('edit-close-btn')?.addEventListener('click', closeEditModal);
     document.getElementById('edit-cancel-btn')?.addEventListener('click', closeEditModal);
@@ -91,18 +100,26 @@
       editInput.value = formatters.formatNumberDots(editInput.value);
     });
 
-    editForm?.addEventListener('submit', (e) => {
+    editForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!editingPaymentId || !editInput || !editError) return;
+      if (!editingPaymentId || !editInput || !editError || !editSubmit) return;
+
       const parsed = formatters.parseRupiahInput(editInput.value);
-      const res = store.editPayment(editingPaymentId, parsed);
-      if (res.error) {
-        editError.textContent = res.error;
-        editError.classList.remove('is-hidden');
-        return;
+      editSubmit.disabled = true;
+      editSubmit.textContent = 'Menyimpan...';
+      try {
+        const res = await store.editPayment(editingPaymentId, parsed);
+        if (res.error) {
+          editError.textContent = res.error;
+          editError.classList.remove('is-hidden');
+          return;
+        }
+        closeEditModal();
+        toast.showToast(`Nominal diperbarui menjadi ${formatters.formatRupiah(parsed)}.`);
+      } finally {
+        editSubmit.disabled = false;
+        editSubmit.textContent = 'Simpan';
       }
-      closeEditModal();
-      toast.showToast(`Nominal setoran diperbarui menjadi ${formatters.formatRupiah(parsed)}.`);
     });
 
     document.addEventListener('keydown', (e) => {

@@ -1,0 +1,10 @@
+{
+  "name": "zero-five-iuran",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ZERO FIVE — Aplikasi pencatatan pemasukan iuran warga mobile-only dengan Supabase",
+  "scripts": {
+    "build:env": "node scripts/build-env.js",
+    "build": "node scripts/build-env.js"
+  }
+}

@@ -167,18 +167,23 @@
   font-size: 1.0625rem;
 }
 
-.icon-input-wrap .ph {
+.icon-input-wrap .ph-bold {
   position: absolute;
   left: 13px;
-  font-size: 1.05rem;
-  color: var(--accent-primary);
+  font-size: 1.1rem;
+  color: var(--text-primary);
   pointer-events: none;
 }
 
 .icon-input {
   padding-left: 40px;
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.icon-input:disabled {
+  color: var(--text-primary);
+  opacity: 1;
 }
 
 .quick-amounts {
@@ -209,11 +214,13 @@
   background: var(--accent-soft);
 }
 
+/* Polished Phosphor Checkbox for Lunas */
 .checkbox-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 11px 12px;
   background: var(--status-lunas-bg);
   border: 1px solid var(--status-lunas-border);
   border-radius: var(--radius-md);
@@ -221,13 +228,51 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--status-lunas-text);
+  user-select: none;
 }
 
-.checkbox-row input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent-primary);
-  cursor: pointer;
+.sr-only-check {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.phosphor-check-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1.5px solid var(--status-lunas-text);
+  background: var(--bg-surface);
+  color: var(--text-inverse);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.phosphor-check-box .ph-bold {
+  font-size: 0.82rem;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.sr-only-check:checked + .phosphor-check-box {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.sr-only-check:checked + .phosphor-check-box .ph-bold {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.sr-only-check:focus-visible + .phosphor-check-box {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .form-error {
@@ -284,7 +329,7 @@
 
 .time-meta {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
 }
 
@@ -351,6 +396,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  max-height: 70dvh;
+  overflow-y: auto;
 }
 
 .modal-footer {
@@ -360,6 +407,140 @@
   display: grid;
   grid-template-columns: 1fr 1.4fr;
   gap: 8px;
+}
+
+.edit-resident-row {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.edit-resident-row strong {
+  color: var(--text-primary);
+}
+
+/* Resident Payment Detail Card */
+.detail-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.detail-payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-payment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.detail-payment-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.detail-payment-date .ph-bold {
+  color: var(--accent-primary);
+}
+
+/* Backup Sheet Controls */
+.backup-scope-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 4px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.backup-scope-btn {
+  min-height: 36px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.backup-scope-btn.is-active {
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+}
+
+.backup-format-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backup-format-btn {
+  width: 100%;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.backup-format-btn:hover {
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.backup-format-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.backup-format-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.backup-format-title {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .pin-hint {

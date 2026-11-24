@@ -2,49 +2,28 @@
 
 /**
  * Public Resident View renderer and event handlers.
- * Uses custom polished Day Dropdown + default "Semuanya" filter.
+ * Uses custom polished Calendar Popover Card + default "Semuanya" filter and clickable rows.
  */
 (function initPublicView(global) {
   const app = (global.IuranApp = global.IuranApp || {});
-  const { store, formatters, customDropdown } = app;
+  const { store, formatters, sheets, calendarPicker } = app;
 
-  let dayDropdownCtrl = null;
+  let calCtrl = null;
 
-  function renderDayControls(days, selectedDate) {
-    const valueEl = document.getElementById('public-day-value');
-    const listEl = document.getElementById('public-day-list');
+  function renderDateControls(selectedDate) {
+    const displayEl = document.getElementById('public-date-display');
     const allBtn = document.getElementById('public-all-days-btn');
 
     const isAll = selectedDate === 'all';
-    if (valueEl) {
-      valueEl.textContent = isAll ? 'Pilih Hari...' : formatters.formatCollectionDayLabel(selectedDate);
-      valueEl.classList.toggle('is-placeholder', isAll);
+    if (displayEl) {
+      displayEl.textContent = isAll ? 'Pilih Tanggal...' : formatters.formatFullDayDate(selectedDate);
+      displayEl.classList.toggle('is-placeholder', isAll);
     }
-
-    if (listEl) {
-      if (days.length === 0) {
-        listEl.innerHTML = '<div class="cselect-empty">Belum ada hari penarikan.</div>';
-      } else {
-        listEl.innerHTML = days
-          .map((isoDate) => {
-            const isSelected = isoDate === selectedDate;
-            const checkIcon = isSelected
-              ? '<i class="ph-fill ph-check-circle" aria-hidden="true"></i>'
-              : '';
-            return `
-              <button type="button" class="cselect-option${isSelected ? ' is-selected' : ''}" role="option" aria-selected="${isSelected}" data-day-value="${formatters.escapeHtml(isoDate)}">
-                <span>${formatters.escapeHtml(formatters.formatCollectionDayLabel(isoDate))}</span>
-                <span class="cselect-option-meta">${checkIcon}</span>
-              </button>`;
-          })
-          .join('');
-      }
-    }
-
     if (allBtn) {
       allBtn.classList.toggle('is-active', isAll);
       allBtn.setAttribute('aria-pressed', String(isAll));
     }
+    calCtrl?.render();
   }
 
   function renderMetrics(stats, selectedDate) {
@@ -59,7 +38,7 @@
       footEl.textContent =
         selectedDate === 'all'
           ? 'Total keseluruhan'
-          : `Total ${formatters.formatCollectionDayLabel(selectedDate)}`;
+          : formatters.formatFullDayDate(selectedDate);
     }
     if (paidEl) {
       paidEl.innerHTML = `${stats.settledCount}<span style="font-size: 0.875rem; font-weight: 500; color: var(--text-muted);"> / ${stats.totalResidents}</span>`;
@@ -103,9 +82,35 @@
     return '<span class="badge badge-unpaid"><i class="ph ph-clock" aria-hidden="true"></i>Belum Bayar</span>';
   }
 
-  function renderTable(rows) {
+  function renderTable(rows, state) {
     const tbody = document.getElementById('public-table-body');
     if (!tbody) return;
+
+    if (state.isLoading) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="3">
+            <div class="empty-state">
+              <i class="ph ph-spinner" aria-hidden="true"></i>
+              <p>Memuat data...</p>
+            </div>
+          </td>
+        </tr>`;
+      return;
+    }
+
+    if (state.loadError) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="3">
+            <div class="empty-state">
+              <i class="ph ph-wifi-slash" aria-hidden="true"></i>
+              <p>${formatters.escapeHtml(state.loadError)}</p>
+            </div>
+          </td>
+        </tr>`;
+      return;
+    }
 
     if (rows.length === 0) {
       tbody.innerHTML = `
@@ -129,7 +134,7 @@
             : '';
 
         return `
-          <tr>
+          <tr class="is-clickable-row" data-resident-detail="${formatters.escapeHtml(row.residentId)}" tabindex="0" role="button" aria-label="Lihat riwayat setoran ${formatters.escapeHtml(row.name)}">
             <td><span class="resident-name">${formatters.escapeHtml(row.name)}</span></td>
             <td class="col-right tabular-nums">
               <span class="${amountClass}">${formatters.formatRupiah(row.totalAmount)}</span>
@@ -143,50 +148,30 @@
 
   function render() {
     const state = store.getState();
-    const days = store.getCollectionDays();
     const stats = store.getStats();
     const rows = store.getFilteredPublicRows();
 
-    renderDayControls(days, state.selectedDate);
+    renderDateControls(state.selectedDate);
     renderMetrics(stats, state.selectedDate);
     renderFilterPills(stats, state.statusFilter);
-    renderTable(rows);
-
-    const clearBtn = document.getElementById('public-search-clear');
-    if (clearBtn) {
-      clearBtn.classList.toggle('is-hidden', state.searchQuery.length === 0);
-    }
+    renderTable(rows, state);
   }
 
   function bindEvents() {
-    dayDropdownCtrl = customDropdown.attach('public-day-dropdown');
-
-    document.getElementById('public-day-list')?.addEventListener('click', (e) => {
-      const opt = e.target.closest('[data-day-value]');
-      const val = opt?.getAttribute('data-day-value');
-      if (!val) return;
-      store.setSelectedDate(val);
-      dayDropdownCtrl?.close();
+    calCtrl = calendarPicker.create({
+      rootId: 'public-date-picker',
+      getSelectedDate: () => store.getState().selectedDate,
+      getPaymentDates: () => store.getCollectionDays(),
+      onSelectDate: (isoOrAll) => store.setSelectedDate(isoOrAll),
     });
 
     document.getElementById('public-all-days-btn')?.addEventListener('click', () => {
       store.setSelectedDate('all');
-      dayDropdownCtrl?.close();
+      calCtrl?.close();
     });
 
-    const searchInput = document.getElementById('public-search-input');
-    const clearBtn = document.getElementById('public-search-clear');
-
-    searchInput?.addEventListener('input', (e) => {
+    document.getElementById('public-search-input')?.addEventListener('input', (e) => {
       store.setSearchQuery(e.target.value);
-    });
-
-    clearBtn?.addEventListener('click', () => {
-      if (searchInput) {
-        searchInput.value = '';
-        searchInput.focus();
-      }
-      store.setSearchQuery('');
     });
 
     document.querySelectorAll('[data-status-filter]').forEach((btn) => {
@@ -194,6 +179,23 @@
         const filter = btn.getAttribute('data-status-filter');
         if (filter) store.setStatusFilter(filter);
       });
+    });
+
+    const tbody = document.getElementById('public-table-body');
+    tbody?.addEventListener('click', (e) => {
+      const row = e.target.closest('[data-resident-detail]');
+      const residentId = row?.getAttribute('data-resident-detail');
+      if (residentId) sheets.openResidentDetail(residentId);
+    });
+
+    tbody?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest('[data-resident-detail]');
+      const residentId = row?.getAttribute('data-resident-detail');
+      if (residentId) {
+        e.preventDefault();
+        sheets.openResidentDetail(residentId);
+      }
     });
   }
 

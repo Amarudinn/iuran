@@ -1,10 +1,10 @@
 'use strict';
 
 /**
- * Collector Admin Payment Form:
+ * Async Collector Admin Payment Form:
  * - Custom searchable Resident dropdown
- * - Automatic disabled Today Date field with Phosphor calendar icon
- * - Optional Lunas checkbox & inline New Resident creation
+ * - Polished Phosphor Lunas checkbox
+ * - Automatic disabled Today Date field ("Selasa 24 Nov 2026")
  */
 (function initAdminForm(global) {
   const app = (global.IuranApp = global.IuranApp || {});
@@ -76,7 +76,7 @@
     const displayDate = document.getElementById('payment-date-display');
     if (hiddenDate) hiddenDate.value = todayIso;
     if (displayDate) {
-      displayDate.value = `${formatters.formatCollectionDayLabel(todayIso)} (Otomatis)`;
+      displayDate.value = formatters.formatFullDayDate(todayIso);
     }
   }
 
@@ -90,8 +90,7 @@
 
   function preselectResident(residentId) {
     selectResident(residentId);
-    const amountInput = document.getElementById('payment-amount-input');
-    amountInput?.focus();
+    document.getElementById('payment-amount-input')?.focus();
     document
       .getElementById('payment-form-card')
       ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -104,6 +103,7 @@
     const dateHidden = document.getElementById('payment-date-input');
     const markLunasInput = document.getElementById('payment-mark-lunas');
     const formError = document.getElementById('payment-form-error');
+    const submitBtn = document.getElementById('payment-submit-btn');
 
     syncAutoDateDisplay();
 
@@ -147,9 +147,9 @@
       });
     });
 
-    document.getElementById('payment-form')?.addEventListener('submit', (e) => {
+    document.getElementById('payment-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!residentHidden || !amountInput || !dateHidden || !formError) return;
+      if (!residentHidden || !amountInput || !dateHidden || !formError || !submitBtn) return;
 
       syncAutoDateDisplay();
       const residentId = residentHidden.value;
@@ -157,27 +157,33 @@
       const paidDate = dateHidden.value;
       const markLunas = Boolean(markLunasInput?.checked);
 
-      const res = store.recordPayment({ paidDate, residentId, amount, markLunas });
-      if (res.error) {
-        formError.textContent = res.error;
-        formError.classList.remove('is-hidden');
-        return;
+      submitBtn.disabled = true;
+      try {
+        const res = await store.recordPayment({ paidDate, residentId, amount, markLunas });
+        if (res.error) {
+          formError.textContent = res.error;
+          formError.classList.remove('is-hidden');
+          return;
+        }
+
+        const resident = store.getState().residents.find((r) => r.id === residentId);
+        formError.classList.add('is-hidden');
+        selectResident('');
+        amountInput.value = '';
+        if (markLunasInput) markLunasInput.checked = false;
+
+        const lunasSuffix = markLunas ? ' & ditandai Lunas' : '';
+        toast.showToast(
+          `Setoran ${formatters.formatRupiah(amount)} (${resident ? resident.name : 'Warga'}) dicatat${lunasSuffix}.`
+        );
+      } finally {
+        submitBtn.disabled = false;
       }
-
-      const resident = store.getState().residents.find((r) => r.id === residentId);
-      formError.classList.add('is-hidden');
-      selectResident('');
-      amountInput.value = '';
-      if (markLunasInput) markLunasInput.checked = false;
-
-      const lunasSuffix = markLunas ? ' & ditandai Lunas' : '';
-      toast.showToast(
-        `Setoran ${formatters.formatRupiah(amount)} (${resident ? resident.name : 'Warga'}) dicatat${lunasSuffix}.`
-      );
     });
 
     const newResidentBox = document.getElementById('new-resident-box');
     const newResidentInput = document.getElementById('new-resident-name');
+    const saveNewBtn = document.getElementById('save-new-resident-btn');
 
     document.getElementById('toggle-new-resident-btn')?.addEventListener('click', () => {
       if (!newResidentBox) return;
@@ -185,18 +191,23 @@
       if (!hidden && newResidentInput) newResidentInput.focus();
     });
 
-    document.getElementById('save-new-resident-btn')?.addEventListener('click', () => {
+    saveNewBtn?.addEventListener('click', async () => {
       if (!newResidentInput) return;
-      const res = store.addResident(newResidentInput.value);
-      if (res.error) {
-        toast.showToast(res.error, 'error');
-        return;
+      saveNewBtn.disabled = true;
+      try {
+        const res = await store.addResident(newResidentInput.value);
+        if (res.error) {
+          toast.showToast(res.error, 'error');
+          return;
+        }
+        newResidentInput.value = '';
+        newResidentBox?.classList.add('is-hidden');
+        selectResident(res.data.id);
+        toast.showToast(`Warga baru "${res.data.name}" ditambahkan.`);
+        amountInput?.focus();
+      } finally {
+        saveNewBtn.disabled = false;
       }
-      newResidentInput.value = '';
-      newResidentBox?.classList.add('is-hidden');
-      selectResident(res.data.id);
-      toast.showToast(`Warga baru "${res.data.name}" ditambahkan.`);
-      amountInput?.focus();
     });
   }
 

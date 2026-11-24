@@ -1,12 +1,12 @@
 'use strict';
 
 /**
- * Collector Admin Dashboard renderer.
- * Always displays cumulative data ("all" / Semuanya) with day picker locked/disabled.
+ * Async Collector Admin Dashboard renderer.
+ * Always displays cumulative data ("all" / Semuanya) with Backup modal trigger.
  */
 (function initAdminView(global) {
   const app = (global.IuranApp = global.IuranApp || {});
-  const { store, formatters, toast, modals, adminForm } = app;
+  const { store, formatters, toast, modals, sheets, adminForm } = app;
 
   function renderAdminSummary(stats) {
     const inc = document.getElementById('admin-metric-income');
@@ -38,7 +38,7 @@
         <tr>
           <td>
             <span class="resident-name">${formatters.escapeHtml(item.residentName)}</span>
-            <span class="time-meta">${formatters.escapeHtml(formatters.formatCollectionDayLabel(item.paidDate))}</span>
+            <span class="time-meta">${formatters.escapeHtml(formatters.formatFullDayDate(item.paidDate))}</span>
           </td>
           <td class="col-right tabular-nums amount-paid">${formatters.formatRupiah(item.amount)}</td>
           <td class="col-right">
@@ -101,7 +101,7 @@
           <tr>
             <td>
               <span class="resident-name">${formatters.escapeHtml(item.name)}</span>
-              <span class="time-meta tabular-nums">Total: ${formatters.formatRupiah(item.totalAmount)}</span>
+              <span class="time-meta tabular-nums">${formatters.formatRupiah(item.totalAmount)}</span>
             </td>
             <td class="col-right">
               <button type="button" class="${btnClass}" data-toggle-lunas="${formatters.escapeHtml(item.residentId)}">
@@ -115,7 +115,6 @@
 
   function render() {
     const state = store.getState();
-    // Mode pengurus selalu menampilkan seluruh data ("all")
     const summaries = store.getResidentSummaries('all');
     const stats = store.getStats('all');
     const history = store.getPaymentHistory('all');
@@ -145,6 +144,10 @@
   function bindEvents() {
     adminForm.bindEvents();
 
+    document.getElementById('open-backup-btn')?.addEventListener('click', () => {
+      sheets.openBackupModal();
+    });
+
     document.querySelectorAll('[data-admin-tab]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-admin-tab');
@@ -152,7 +155,7 @@
       });
     });
 
-    document.getElementById('admin-history-body')?.addEventListener('click', (e) => {
+    document.getElementById('admin-history-body')?.addEventListener('click', async (e) => {
       const editBtn = e.target.closest('[data-edit-payment]');
       if (editBtn) {
         const id = editBtn.getAttribute('data-edit-payment');
@@ -160,17 +163,24 @@
         if (record) modals.openEditModal(record);
         return;
       }
+
       const delBtn = e.target.closest('[data-delete-payment]');
-      if (!delBtn) return;
+      if (!delBtn || delBtn.disabled) return;
       const id = delBtn.getAttribute('data-delete-payment');
       const record = store.getPaymentHistory('all').find((p) => p.id === id);
       if (!record) return;
       if (!window.confirm(`Hapus setoran ${formatters.formatRupiah(record.amount)} atas nama ${record.residentName}?`)) {
         return;
       }
-      const res = store.removePayment(id);
-      if (res.error) toast.showToast(res.error, 'error');
-      else toast.showToast(`Setoran atas nama ${record.residentName} dihapus.`);
+
+      delBtn.disabled = true;
+      try {
+        const res = await store.removePayment(id);
+        if (res.error) toast.showToast(res.error, 'error');
+        else toast.showToast(`Setoran atas nama ${record.residentName} dihapus.`);
+      } finally {
+        delBtn.disabled = false;
+      }
     });
 
     document.getElementById('admin-unpaid-body')?.addEventListener('click', (e) => {
@@ -179,17 +189,24 @@
       if (residentId) adminForm.preselectResident(residentId);
     });
 
-    document.getElementById('admin-lunas-body')?.addEventListener('click', (e) => {
+    document.getElementById('admin-lunas-body')?.addEventListener('click', async (e) => {
       const toggleBtn = e.target.closest('[data-toggle-lunas]');
-      const residentId = toggleBtn?.getAttribute('data-toggle-lunas');
+      if (!toggleBtn || toggleBtn.disabled) return;
+      const residentId = toggleBtn.getAttribute('data-toggle-lunas');
       if (!residentId) return;
-      const res = store.toggleResidentLunas(residentId);
-      if (res.error) {
-        toast.showToast(res.error, 'error');
-        return;
+
+      toggleBtn.disabled = true;
+      try {
+        const res = await store.toggleResidentLunas(residentId);
+        if (res.error) {
+          toast.showToast(res.error, 'error');
+          return;
+        }
+        const statusText = res.data.isLunas ? 'ditandai Lunas' : 'dibatalkan status Lunas-nya';
+        toast.showToast(`${res.data.name} ${statusText}.`);
+      } finally {
+        toggleBtn.disabled = false;
       }
-      const statusText = res.data.isLunas ? 'ditandai Lunas' : 'dibatalkan status Lunas-nya';
-      toast.showToast(`${res.data.name} ${statusText}.`);
     });
   }
 

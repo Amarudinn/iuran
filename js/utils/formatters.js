@@ -1,22 +1,14 @@
 'use strict';
 
 /**
- * Formatting, parsing, date helpers, and XSS-safe sanitization.
+ * Formatting, parsing, Indonesian date helpers, and XSS-safe sanitization.
  */
 (function initFormatters(global) {
   const app = (global.IuranApp = global.IuranApp || {});
 
   const idrNumberFormat = new Intl.NumberFormat('id-ID');
-  const shortDateTimeFormat = new Intl.DateTimeFormat('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const monthYearFormat = new Intl.DateTimeFormat('id-ID', {
-    month: 'short',
-    year: 'numeric',
-  });
+  const WEEKDAYS_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
   function formatRupiah(amount) {
     const safeAmount = Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0;
@@ -45,25 +37,22 @@
       .replace(/'/g, '&#39;');
   }
 
-  function formatShortDateTime(isoString) {
-    const date = new Date(isoString);
-    if (Number.isNaN(date.getTime())) return '-';
-    return shortDateTimeFormat.format(date).replace('.', ':');
-  }
-
   /**
-   * Format ISO date ("2026-11-11") into flexible collection day label ("Hari 11 • Nov 2026").
+   * Format ISO date ("2026-11-24") into clean Indonesian weekday date ("Selasa 24 Nov 2026").
    * @param {string} isoDate YYYY-MM-DD
    * @returns {string}
    */
-  function formatCollectionDayLabel(isoDate) {
+  function formatFullDayDate(isoDate) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoDate || ''));
     if (!match) return String(isoDate || '-');
     const year = Number(match[1]);
-    const month = Number(match[2]) - 1;
+    const monthIndex = Number(match[2]) - 1;
     const day = Number(match[3]);
-    const dateObj = new Date(year, month, day);
-    return `Hari ${day} • ${monthYearFormat.format(dateObj)}`;
+    const dateObj = new Date(year, monthIndex, day);
+    if (Number.isNaN(dateObj.getTime())) return String(isoDate);
+    const weekday = WEEKDAYS_ID[dateObj.getDay()];
+    const month = MONTHS_ID[dateObj.getMonth()];
+    return `${weekday} ${day} ${month} ${year}`;
   }
 
   /**
@@ -88,8 +77,7 @@
     formatNumberDots,
     parseRupiahInput,
     escapeHtml,
-    formatShortDateTime,
-    formatCollectionDayLabel,
+    formatFullDayDate,
     getTodayIsoDate,
     generateId,
   };
