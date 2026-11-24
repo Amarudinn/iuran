@@ -23,6 +23,12 @@
   gap: 8px;
 }
 
+.admin-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .brand-subtitle {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -663,4 +669,74 @@
   display: grid;
   grid-template-columns: 1fr 1.35fr;
   gap: 8px;
+}
+
+/* Backdate / Historical Notebook Sheet Styles */
+.modal-panel .cal-menu {
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100%;
+  margin-top: 8px;
+  box-shadow: none;
+  background: var(--bg-canvas);
+}
+
+.bd-create-opt {
+  color: var(--accent-primary);
+  font-weight: 600;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
+.bd-textarea {
+  width: 100%;
+  min-height: 118px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.bd-textarea:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.bd-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.bd-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 11px;
+  font-size: 0.8125rem;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.bd-preview-row.is-error {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.bd-preview-err {
+  font-size: 0.72rem;
+  font-weight: 600;
+  flex-shrink: 0;
 }

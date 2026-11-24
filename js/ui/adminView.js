@@ -6,7 +6,7 @@
  */
 (function initAdminView(global) {
   const app = (global.IuranApp = global.IuranApp || {});
-  const { store, formatters, toast, modals, sheets, adminForm } = app;
+  const { store, formatters, toast, modals, sheets, backdateSheet, adminForm } = app;
 
   function renderAdminSummary(stats) {
     const inc = document.getElementById('admin-metric-income');
@@ -146,6 +146,10 @@
 
     document.getElementById('open-backup-btn')?.addEventListener('click', () => {
       sheets.openBackupModal();
+    });
+
+    document.getElementById('open-backdate-btn')?.addEventListener('click', () => {
+      backdateSheet.open();
     });
 
     document.querySelectorAll('[data-admin-tab]').forEach((btn) => {

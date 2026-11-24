@@ -233,15 +233,21 @@
       </header>
 
       <main class="container main-content">
-        <!-- Label Mode Pengurus & Button Backup di bawah Header -->
+        <!-- Label Mode Pengurus, Data Lama & Backup di bawah Header -->
         <div class="admin-mode-strip">
           <span class="badge badge-admin">
             <i class="ph-fill ph-shield-check" aria-hidden="true"></i>Mode Pengurus
           </span>
-          <button type="button" id="open-backup-btn" class="btn btn-secondary btn-sm">
-            <i class="ph-bold ph-download-simple" aria-hidden="true"></i>
-            <span>Backup</span>
-          </button>
+          <div class="admin-strip-actions">
+            <button type="button" id="open-backdate-btn" class="btn btn-secondary btn-sm">
+              <i class="ph-bold ph-book-open-text" aria-hidden="true"></i>
+              <span>Data Lama</span>
+            </button>
+            <button type="button" id="open-backup-btn" class="btn btn-secondary btn-sm">
+              <i class="ph-bold ph-download-simple" aria-hidden="true"></i>
+              <span>Backup</span>
+            </button>
+          </div>
         </div>
 
         <!-- Admin Context Card (Tanggal Disable -> Semuanya) -->
@@ -658,6 +664,155 @@
     </div>
   </div>
 
+  <!-- =========================================================
+       BOTTOM SHEET 5: INPUT DATA LAMA / CATATAN BUKU KE SUPABASE
+       ========================================================= -->
+  <div id="backdate-modal" class="modal-backdrop is-hidden" role="dialog" aria-modal="true" aria-labelledby="backdate-modal-title">
+    <div class="modal-panel">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 id="backdate-modal-title" class="section-title">
+          <i class="ph-bold ph-book-open-text" style="color: var(--accent-primary);" aria-hidden="true"></i>
+          Input Catatan Buku
+        </h2>
+        <button type="button" id="bd-close-btn" class="btn btn-ghost btn-icon" aria-label="Tutup">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="backup-scope-group" role="group" aria-label="Mode input catatan lama">
+          <button type="button" class="backup-scope-btn is-active" data-bd-tab="single" aria-pressed="true">
+            Satuan
+          </button>
+          <button type="button" class="backup-scope-btn" data-bd-tab="bulk" aria-pressed="false">
+            Banyak Sekaligus
+          </button>
+        </div>
+
+        <!-- TAB 1: SATUAN -->
+        <form id="bd-single-form" class="form-group" style="gap: 12px;" novalidate>
+          <div id="bd-single-panel" class="form-group" style="gap: 12px;">
+            <div class="form-group">
+              <span class="form-label">Nama Warga</span>
+              <input type="hidden" id="bd-resident-select" value="" />
+              <div id="bd-resident-dropdown" class="cselect">
+                <button type="button" class="cselect-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="cselect-leading">
+                    <i class="ph ph-user" aria-hidden="true"></i>
+                    <span id="bd-resident-value" class="cselect-value is-placeholder">Pilih atau ketik nama warga...</span>
+                  </span>
+                  <i class="ph ph-caret-down cselect-caret" aria-hidden="true"></i>
+                </button>
+                <div class="cselect-menu is-hidden" role="listbox">
+                  <div class="cselect-search-wrap">
+                    <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+                    <input type="search" id="bd-resident-search" class="cselect-search" placeholder="Cari atau ketik nama baru..." autocomplete="off" />
+                  </div>
+                  <div id="bd-resident-list" class="cselect-list"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <span class="form-label">Hari / Tanggal Membayar</span>
+              <div id="bd-date-picker" class="cal-picker">
+                <button type="button" class="date-picker-box" data-cal-trigger aria-haspopup="dialog" aria-expanded="false">
+                  <span class="date-picker-leading">
+                    <i class="ph-bold ph-calendar-blank" aria-hidden="true"></i>
+                    <span id="bd-date-display" class="date-picker-text">Pilih Tanggal...</span>
+                  </span>
+                  <i class="ph ph-caret-down cselect-caret" aria-hidden="true"></i>
+                </button>
+                <div class="cal-menu is-hidden" data-cal-menu role="dialog" aria-label="Pilih tanggal pembayaran sebelumnya">
+                  <div class="cal-header">
+                    <button type="button" class="cal-nav-btn" data-cal-prev aria-label="Bulan sebelumnya">
+                      <i class="ph-bold ph-caret-left" aria-hidden="true"></i>
+                    </button>
+                    <span class="cal-month-title" data-cal-month></span>
+                    <button type="button" class="cal-nav-btn" data-cal-next aria-label="Bulan berikutnya">
+                      <i class="ph-bold ph-caret-right" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                  <div class="cal-grid" data-cal-grid></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="bd-amount-input" class="form-label">Nominal Bayar (Rp)</label>
+              <div class="currency-input-wrap">
+                <span class="currency-prefix">Rp</span>
+                <input type="text" id="bd-amount-input" class="input currency-input tabular-nums" inputmode="numeric" placeholder="0" autocomplete="off" required />
+              </div>
+              <div class="quick-amounts">
+                <button type="button" class="chip-amount" data-bd-amount="10000">10rb</button>
+                <button type="button" class="chip-amount" data-bd-amount="20000">20rb</button>
+                <button type="button" class="chip-amount" data-bd-amount="25000">25rb</button>
+                <button type="button" class="chip-amount" data-bd-amount="50000">50rb</button>
+              </div>
+            </div>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="bd-mark-lunas" class="sr-only-check" />
+              <span class="phosphor-check-box" aria-hidden="true"><i class="ph-bold ph-check"></i></span>
+              <span>Tandai warga ini sebagai <strong>Lunas</strong></span>
+            </label>
+
+            <p id="bd-single-error" class="form-error is-hidden" role="alert"></p>
+
+            <button type="submit" id="bd-single-submit" class="btn btn-primary" style="width: 100%;">
+              Simpan Catatan
+            </button>
+          </div>
+        </form>
+
+        <!-- TAB 2: BANYAK SEKALIGUS (SALIN DARI BUKU CATATAN) -->
+        <div id="bd-bulk-panel" class="form-group is-hidden" style="gap: 12px;">
+          <div class="form-group">
+            <span class="form-label">Tanggal Default (jika baris tanpa tanggal)</span>
+            <div id="bd-bulk-date-picker" class="cal-picker">
+              <button type="button" class="date-picker-box" data-cal-trigger aria-haspopup="dialog" aria-expanded="false">
+                <span class="date-picker-leading">
+                  <i class="ph-bold ph-calendar-blank" aria-hidden="true"></i>
+                  <span id="bd-bulk-date-display" class="date-picker-text">Pilih Tanggal...</span>
+                </span>
+                <i class="ph ph-caret-down cselect-caret" aria-hidden="true"></i>
+              </button>
+              <div class="cal-menu is-hidden" data-cal-menu role="dialog" aria-label="Pilih tanggal default import">
+                <div class="cal-header">
+                  <button type="button" class="cal-nav-btn" data-cal-prev aria-label="Bulan sebelumnya">
+                    <i class="ph-bold ph-caret-left" aria-hidden="true"></i>
+                  </button>
+                  <span class="cal-month-title" data-cal-month></span>
+                  <button type="button" class="cal-nav-btn" data-cal-next aria-label="Bulan berikutnya">
+                    <i class="ph-bold ph-caret-right" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div class="cal-grid" data-cal-grid></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="bd-bulk-textarea" class="form-label">Daftar Catatan (1 baris = 1 setoran)</label>
+            <textarea
+              id="bd-bulk-textarea"
+              class="bd-textarea"
+              placeholder="Contoh:&#10;Amar Rp 10rb Senin 23 Nov 2026&#10;Budi Santoso 25rb 21 Nov 2026&#10;Dewi Lestari 20.000"
+            ></textarea>
+          </div>
+
+          <div id="bd-bulk-preview" class="bd-preview-list"></div>
+
+          <button type="button" id="bd-bulk-submit" class="btn btn-primary" style="width: 100%;" disabled>
+            Simpan Semua
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- PWA Install Notification Banner (Muncul maksimal 1x per 24 jam) -->
   <aside id="pwa-install-banner" class="pwa-banner is-hidden" role="dialog" aria-label="Pasang aplikasi ZERO FIVE">
     <div class="pwa-banner-top">
@@ -695,6 +850,7 @@
   <script defer src="js/state/selectors.js"></script>
   <script defer src="js/state/store.js"></script>
   <script defer src="js/utils/backupExporter.js"></script>
+  <script defer src="js/utils/backdateParser.js"></script>
   <script defer src="js/ui/theme.js"></script>
   <script defer src="js/ui/pwaInstall.js"></script>
   <script defer src="js/ui/customDropdown.js"></script>
@@ -702,6 +858,7 @@
   <script defer src="js/ui/toast.js"></script>
   <script defer src="js/ui/modals.js"></script>
   <script defer src="js/ui/sheets.js"></script>
+  <script defer src="js/ui/backdateSheet.js"></script>
   <script defer src="js/ui/publicView.js"></script>
   <script defer src="js/ui/adminForm.js"></script>
   <script defer src="js/ui/adminView.js"></script>

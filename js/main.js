@@ -51,7 +51,7 @@
   }
 
   async function bootstrap() {
-    const { store, theme, pwaInstall, publicView, adminView, modals, sheets, toast } = app;
+    const { store, theme, pwaInstall, publicView, adminView, modals, sheets, backdateSheet, toast } = app;
 
     theme.init();
     pwaInstall.init();
@@ -59,6 +59,7 @@
     adminView.bindEvents();
     modals.bindModalEvents();
     sheets.bindSheetEvents();
+    backdateSheet.bindEvents();
     bindNavigation();
 
     store.subscribe(renderApp);
